@@ -3,22 +3,10 @@ title: "CourseProject"
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r}
-summary(cars)
-```
-
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
+Cleaning
+-----------------------------------------------------
 
 First of all the the training data was cleaned of NAs. Where more than 90% NAs existed or where 90% of the nominal columns displayed the same value, the column was excluded.
 
@@ -214,12 +202,15 @@ In a subsequent step I used RapidMiner to remove correlated attributes, using a 
 
 
 
-Title:Training
+Training
 -----------------------------------------------------
 ----------------------------------------------------------------------------------
 I framed the training process as a function, which one has to pass the data set to trained. According to preference, one can the function have return either a confusion matrix or the model, depending on which piece of code is being #commented out.
 
-I adhered to the 60 40 split of training to testing set. The data was divided into k 10 folds, which implies ten cross validation steps. In each step one withheld data set is being withheld. This choice of 10 times cross validation is needed to get a better approximation of the out of sample error. 
+I adhered to the 60 40 split of training to testing set. The data was divided into k 10 folds, which implies ten cross validation steps. In each step one withheld data set is being withheld. This choice of 10 times cross validation is needed to get a better approximation of the out of sample error and to account for in sample biases. Hence, in sample bias and therefore in sample error rate is reduced. 
+
+Here the function is configured in a way that it returns the model which can then be stored in a variable. 
+
 
 ```{r}
 
@@ -244,6 +235,77 @@ training<-function(data){
         return(modelFit) # returns model or on demand confusion matrix
         
 }
+
+
 ```
 
 
+
+
+Model
+-----------------------------------------------------
+----------------------------------------------------------------------------------
+
+The model is the following:
+         
+    `     Reference
+Prediction    A    B    C    D    E
+         A 5471    2    0    0    0
+         B    0 3716    1    0    0
+         C    0    0 3351    2    0
+         D    0    0    0 3145    0
+         E    0    0    0    0 3528
+
+`
+
+
+Out of sample error:
+
+The inner sample error can be determined to be at 1-accuracy. The reason for this is that we compare the model results against the actual results of the traing set in the confusion matrix
+
+
+The out of sample error rate cannot be estimated with confidence, since the sample might have a bias. The fact that I use k folds, reduces the variation in the estimation error, as the evaluation set is changed 10 times, and the model is therefore build ten times with different trianing data. This flattens out possible skewness/biases for the inner sample error rate and gives a rough estimeate of the out of smample error.
+
+According to the above error rate, the out of sample rate could be 1- 0.99, while it is more likely that it is a bit higher than the estimate from cross validation.
+
+
+
+```{r}
+
+#Random Forest 
+
+
+#11532 samples
+ #  50 predictor
+  #  5 classes: 'A', 'B', 'C', 'D', 'E' 
+
+#No pre-processing
+
+#Resampling: Cross-Validated (10 fold) 
+
+#Summary of sample sizes: 10380, 10378, 10380, 10379, 10380, 10379, ... 
+
+#Resampling results across tuning parameters:
+
+ # mtry  Accuracy   Kappa      Accuracy SD   Kappa SD   
+  # 2    0.9882068  0.9850774  0.0034250992  0.004335511
+ # 37    0.9986992  0.9983545  0.0008426091  0.001065908
+  #72    0.9982657  0.9978061  0.0009137422  0.001156010
+
+#Accuracy was used to select the optimal model using  the largest value.
+#The final value used for the model was mtry = 37. 
+
+```
+
+
+
+
+
+When applying the rf model to the unseen test data set, the following is predicted. 
+
+
+
+ Prediction
+ [1] B A B A A E D B A A B C B A E E A B B B
+
+All of these predictions turned out to be true upon submission. This indicates that the out of smaple error is indeed quite low. 
