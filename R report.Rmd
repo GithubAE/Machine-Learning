@@ -1,0 +1,249 @@
+---
+title: "CourseProject"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+First of all the the training data was cleaned of NAs. Where more than 90% NAs existed or where 90% of the nominal columns displayed the same value, the column was excluded.
+
+```{r}
+
+#input=unprocessed data set
+#output = preprocessed data set (removel of )
+#-------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------
+
+DataPreprocessing <- function(data){
+        
+        dataA<-isNa(data)    
+        dataB<-DivReplacement(dataA) # replaces Div/ Errors with NA values
+        dataC<-ExcludeMissing(dataB) # calling the subfunction NA proportion to decide which data to keep and which to exclude
+       
+   
+        write.csv(dataC, file = "E://University/Coursera/Machine Learning/preprocessed.csv")
+        return(dataC)
+        
+}
+
+#-------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------
+
+
+
+
+
+#-------------------------------------------------------------------------------------------------------
+#Columns to exclude
+#input = Data Set
+#output = vector NaProportions
+NaProportion<-function(data){
+        
+  
+        cols<-ncol(data) #number of cols
+        Exclude<- vector(mode = "numeric", length = cols)
+                
+                
+        for (i in 1:cols) #goes through all columns
+        {
+                
+                
+                                       
+                        
+                        column<-(data[,i])
+                        nacount<-0
+                        
+                        for (x in 1:length(data[,i])) {   #calculates the na rate per column
+                                
+                                
+                                if (is.na(column[x])) {nacount<-nacount + 1} #checks for nas and increments nacoutn
+                        
+                       
+                        
+                        } 
+                        
+                        
+                        NaRate<-nacount/length(data[,i]) #na rate as a percentage
+                        is.numeric
+                        Exclude[i]<-NaRate  #saves the na rate in a vector
+                 
+                
+                
+        } 
+        
+      return(Exclude)  #returns the na rate as vector
+        
+        
+}
+
+
+
+
+
+
+
+
+#-------------------------------------------------------------------------------------------------------
+#input data frame
+#output data frame with NAs declared in "" places
+isNa<-function(data){
+        
+        
+        cols<-ncol(data) #number of cols
+        
+        
+        for (i in 1:cols) #goes through all columns
+        {
+                
+                
+                
+                
+                column<-(data[,i])
+                
+                for (x in 1:length(column)) {   #calculates the na rate per column
+                        
+                        
+                        if (column[x] == "" && !is.na(column[x])) {column[x]<-NA} #checks for nas and increments nacoutn
+                         
+                        
+                } 
+                
+                data[,i]<-column
+                
+                
+                
+        } 
+        
+        return(data)  #returns the na rate as vector
+        
+        
+}
+
+
+
+#-------------------------------------------------------------------------------------------------------
+#input data frame
+#output data frame with NAs declared in "#DIV/0!" places
+DivReplacement<-function(data){
+        
+        
+        cols<-ncol(data) #number of cols
+        
+        
+        for (i in 1:cols) #goes through all columns
+        {
+                
+                
+                
+                
+                column<-(data[,i])
+                
+                for (x in 1:length(column)) {   #calculates the na rate per column
+                        
+                        
+                        if (column[x] == "#DIV/0!" && !is.na(column[x])) {column[x]<-NA} #checks for nas and increments nacoutn
+                        
+                        
+                } 
+                
+                data[,i]<-column
+                
+                
+                
+        } 
+        
+        return(data)  #returns the na rate as vector
+        
+        
+}
+
+
+
+
+
+#-------------------------------------------------------------------------------------------------------
+
+#Input = data frame
+#returns data frame without missing values
+ExcludeMissing<-function(data){
+        
+        
+        Nas<-NaProportion(data)
+        
+        Nas<-Nas > 0.9
+      
+        
+        
+        data<-data[, Nas==FALSE]
+
+return(data)
+
+
+}
+
+
+
+
+
+
+#-------------------------------------------------------------------------------------------------------
+
+
+
+```
+
+
+
+In a subsequent step I used RapidMiner to remove correlated attributes, using a treshold of 0.9 Correlation.This reduced the number of columns in the training data set to below 60. After that, after careful examination of the training data set, the variables "att1" and "user" were removed. The reason for this removal was that they couldnt have been possibly relevant in determining the nature of a training excercise. Graphical examination showed that exercise outcomes "classe" where equally distributed across users. The final number of columns included was 53. 
+
+
+
+
+Title:Training
+-----------------------------------------------------
+----------------------------------------------------------------------------------
+I framed the training process as a function, which one has to pass the data set to trained. According to preference, one can the function have return either a confusion matrix or the model, depending on which piece of code is being #commented out.
+
+I adhered to the 60 40 split of training to testing set. The data was divided into k 10 folds, which implies ten cross validation steps. In each step one withheld data set is being withheld. This choice of 10 times cross validation is needed to get a better approximation of the out of sample error. 
+
+```{r}
+
+training<-function(data){
+        
+        
+        trainIndex <- createDataPartition(data$classe, p = .6,
+                                          list = FALSE,
+                                          times = 1)        
+        
+        ctrl<-trainControl(method ="cv", number = 10, p= .6 )
+        
+        train<-data[trainIndex,]
+        test<-data[-trainIndex,]
+        
+
+         modelFit<-train(classe ~ ., method="rf", data = train, trControl = ctrl) #build the model using a decision tree
+        
+        predictions <- predict(modelFit, data[,-ncol(data)]) #make prediction, "modelFit" is the 
+        #ConfMatrix<-confusionMatrix(predictions, data$classe) #compares the predictions to the real classe attribute in the data set if needed
+                                                                #can be used when required
+        return(modelFit) # returns model or on demand confusion matrix
+        
+}
+```
+
+
